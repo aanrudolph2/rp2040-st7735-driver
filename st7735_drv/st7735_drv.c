@@ -37,20 +37,30 @@ void st7735_init(uint16_t * fb, size_t fb_sz) {
     gpio_put(DC_TFT, 0);
 
     // Init Display
+    writeCommand(ST7735_SWRESET);
+	busy_wait_ms(50);
     writeCommand(ST7735_SLPOUT);
+    busy_wait_ms(500);
     writeCommand(ST7735_COLMOD);
     writeData(0x05);
+    busy_wait_ms(10);
     writeCommand(ST7735_MADCTL);
-    writeData(0xB4);
-    /*
+    writeData(0x08);
+    writeCommand(ST7735_DISSET5);
+	writeData(0x15);
+	writeData(0x02);
+	writeCommand(ST7735_INVCTR);
+	writeData(0x00);
     // Offset display window
     writeCommand(ST7735_CASET);
-    writeData(0x0); writeData(0x03); // Start X address = 3
-    writeData(0x00); writeData(0x83); // End X address = 131
+    writeData(0x0); writeData(0x00); // Start X address = 0
+    writeData(0x00); writeData(0x80); // End X address = 128
     writeCommand(ST7735_RASET);
     writeData(0x00); writeData(0x00); // Start Y address = 0
-    writeData(0x00); writeData(0x80); // End Y address = 128
-    */
+    writeData(0x00); writeData(0xA0); // End Y address = 160
+	writeCommand(ST7735_NORON);
+	busy_wait_ms(10);
+    
     writeCommand(ST7735_DISPON);
     busy_wait_ms(100);
 
@@ -58,15 +68,17 @@ void st7735_init(uint16_t * fb, size_t fb_sz) {
     gpio_put(DC_TFT, 1);
     
     for (int i = 0; i < fb_sz; i ++)
-        st7735_screen_buf[i] = 0x000F;
+        st7735_screen_buf[i] = 0x00;
 
     // Set up DMA
     dma_channel_config cfg = dma_channel_get_default_config(0);
-    channel_config_set_transfer_data_size(&cfg, DMA_SIZE_16);
+    channel_config_set_transfer_data_size(&cfg, DMA_SIZE_8);
     channel_config_set_read_increment(&cfg, true);
     channel_config_set_write_increment(&cfg, false);
     channel_config_set_dreq(&cfg, DREQ_SPI0_TX);
     
-    dma_channel_configure(0, &cfg, &spi_get_hw(spi_default)->dr, st7735_screen_buf, fb_sz, true);
+    dma_channel_configure(0, &cfg, &spi_get_hw(spi0)->dr, st7735_screen_buf, fb_sz * 2, true);
+    
+    dma_channel_wait_for_finish_blocking(0);
 
 }
